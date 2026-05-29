@@ -1,0 +1,359 @@
+/* ==========================================
+   style.css — 全局样式、布局、UI 组件
+   ========================================== */
+
+/* --- CSS 变量 --- */
+:root {
+  --bg-deep: #0a0a1a;
+  --bg-panel: rgba(5, 5, 25, 0.85);
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.6);
+  --neon-cyan: #00d4ff;
+  --neon-magenta: #ff00ff;
+  --neon-gold: #ffdd00;
+  --neon-red: #ff3355;
+  --neon-green: #00ff88;
+  --font-mono: 'Courier New', 'Consolas', 'Monaco', monospace;
+  --font-display: 'Segoe UI', 'Arial', 'Helvetica', sans-serif;
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* --- Reset --- */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-deep);
+  font-family: var(--font-display);
+  color: var(--text-primary);
+  touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+  position: fixed;
+}
+
+/* --- 游戏容器 --- */
+#game-container {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
+#gameCanvas {
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* --- UI 覆盖层 --- */
+#ui-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* --- HUD --- */
+#hud {
+  position: absolute;
+  top: calc(12px + var(--safe-area-top));
+  left: 16px;
+  right: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+#score-display {
+  font-family: var(--font-mono);
+  font-size: clamp(18px, 4vw, 28px);
+  color: var(--text-primary);
+  text-shadow: 0 0 12px var(--neon-cyan), 0 0 24px var(--neon-cyan);
+}
+
+#combo-display {
+  position: absolute;
+  top: calc(48px + var(--safe-area-top));
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-mono);
+  font-size: clamp(14px, 3vw, 22px);
+  color: var(--neon-gold);
+  text-shadow: 0 0 10px var(--neon-gold), 0 0 20px var(--neon-gold);
+  opacity: 0;
+  transition: opacity 0.3s, transform 0.2s;
+}
+
+#combo-display.visible {
+  opacity: 1;
+}
+
+#health-display {
+  display: flex;
+  gap: 6px;
+}
+
+.health-dot {
+  width: clamp(12px, 2.5vw, 18px);
+  height: clamp(12px, 2.5vw, 18px);
+  border-radius: 50%;
+  background: var(--neon-red);
+  box-shadow: 0 0 8px var(--neon-red), 0 0 16px var(--neon-red);
+  transition: all 0.3s ease;
+}
+
+.health-dot.empty {
+  background: var(--bg-panel);
+  box-shadow: none;
+  border: 1px solid rgba(255, 51, 85, 0.3);
+}
+
+/* --- 能量槽 --- */
+#energy-bar-container {
+  position: absolute;
+  bottom: calc(24px + var(--safe-area-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  width: clamp(160px, 40vw, 280px);
+  height: 8px;
+  background: rgba(0, 255, 204, 0.15);
+  border-radius: 4px;
+  border: 1px solid rgba(0, 255, 204, 0.3);
+  overflow: hidden;
+}
+
+#energy-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--neon-green), #00ffcc);
+  box-shadow: 0 0 8px var(--neon-green);
+  border-radius: 4px;
+  transition: width 0.2s ease;
+}
+
+/* --- 菜单画面 --- */
+#menu-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  opacity: 1;
+  transition: opacity 0.5s ease;
+}
+
+#menu-screen.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+#menu-title {
+  font-family: var(--font-display);
+  font-size: clamp(28px, 6vw, 52px);
+  font-weight: 900;
+  letter-spacing: 4px;
+  color: var(--neon-cyan);
+  text-shadow:
+    0 0 10px var(--neon-cyan),
+    0 0 30px var(--neon-cyan),
+    0 0 60px var(--neon-cyan),
+    0 0 100px var(--neon-magenta);
+  margin-bottom: 8px;
+}
+
+#menu-subtitle {
+  font-family: var(--font-mono);
+  font-size: clamp(11px, 2vw, 16px);
+  color: var(--text-secondary);
+  letter-spacing: 6px;
+  margin-bottom: 40px;
+}
+
+#menu-start-hint {
+  font-family: var(--font-display);
+  font-size: clamp(14px, 3vw, 20px);
+  color: var(--text-primary);
+  opacity: 0.8;
+}
+
+#menu-highscore {
+  margin-top: 24px;
+  font-family: var(--font-mono);
+  font-size: clamp(12px, 2.5vw, 16px);
+  color: var(--neon-gold);
+  text-shadow: 0 0 8px var(--neon-gold);
+}
+
+#menu-modes {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.mode-btn {
+  pointer-events: auto;
+  padding: 8px 20px;
+  border: 1px solid rgba(0, 212, 255, 0.5);
+  background: rgba(0, 212, 255, 0.1);
+  color: var(--neon-cyan);
+  font-family: var(--font-mono);
+  font-size: clamp(12px, 2vw, 15px);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.mode-btn:hover, .mode-btn.active {
+  background: rgba(0, 212, 255, 0.25);
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 12px rgba(0, 212, 255, 0.4);
+}
+
+/* --- 游戏结束画面 --- */
+#gameover-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.6s ease;
+  background: rgba(5, 5, 15, 0.8);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+#gameover-screen.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+#gameover-title {
+  font-family: var(--font-display);
+  font-size: clamp(32px, 7vw, 56px);
+  font-weight: 900;
+  color: var(--neon-red);
+  text-shadow:
+    0 0 10px var(--neon-red),
+    0 0 30px var(--neon-red),
+    0 0 60px var(--neon-red);
+  margin-bottom: 24px;
+}
+
+#gameover-stats {
+  font-family: var(--font-mono);
+  font-size: clamp(14px, 3vw, 20px);
+  color: var(--text-primary);
+  text-align: center;
+  line-height: 1.8;
+}
+
+#gameover-stats .label {
+  color: var(--text-secondary);
+}
+
+#gameover-stats .value {
+  color: var(--neon-gold);
+  text-shadow: 0 0 8px var(--neon-gold);
+}
+
+#gameover-rating {
+  font-family: var(--font-display);
+  font-size: clamp(40px, 10vw, 80px);
+  font-weight: 900;
+  margin: 16px 0;
+}
+
+#gameover-rating.rating-SS { color: #ff00ff; text-shadow: 0 0 20px #ff00ff, 0 0 40px #ff00ff; }
+#gameover-rating.rating-S  { color: #ffdd00; text-shadow: 0 0 20px #ffdd00, 0 0 40px #ffdd00; }
+#gameover-rating.rating-A  { color: #00ff88; text-shadow: 0 0 20px #00ff88, 0 0 40px #00ff88; }
+#gameover-rating.rating-B  { color: #00d4ff; text-shadow: 0 0 15px #00d4ff; }
+#gameover-rating.rating-C  { color: #ff8800; text-shadow: 0 0 15px #ff8800; }
+#gameover-rating.rating-D  { color: #ff3355; text-shadow: 0 0 15px #ff3355; }
+
+#gameover-restart {
+  margin-top: 32px;
+  font-family: var(--font-display);
+  font-size: clamp(13px, 2.5vw, 17px);
+  color: var(--text-secondary);
+}
+
+/* --- Boss 提示 --- */
+#boss-announce {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-display);
+  font-size: clamp(20px, 5vw, 36px);
+  font-weight: 900;
+  color: var(--neon-red);
+  text-shadow: 0 0 15px var(--neon-red), 0 0 35px var(--neon-red);
+  opacity: 0;
+  pointer-events: none;
+  letter-spacing: 4px;
+  text-align: center;
+}
+
+#boss-announce.visible {
+  opacity: 1;
+}
+
+#boss-health-container {
+  position: absolute;
+  top: calc(52px + var(--safe-area-top));
+  left: 50%;
+  transform: translateX(-50%);
+  width: clamp(200px, 50vw, 400px);
+  height: 6px;
+  background: rgba(255, 0, 64, 0.2);
+  border-radius: 3px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+#boss-health-container.visible {
+  opacity: 1;
+}
+
+#boss-health-fill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #ff0040, #ff3355);
+  box-shadow: 0 0 10px var(--neon-red);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+/* --- 通用 --- */
+#wave-display {
+  position: absolute;
+  top: calc(28px + var(--safe-area-top));
+  right: 16px;
+  font-family: var(--font-mono);
+  font-size: clamp(12px, 2.5vw, 16px);
+  color: var(--text-secondary);
+  text-shadow: 0 0 8px var(--text-secondary);
+}
+
+.hidden {
+  display: none !important;
+}

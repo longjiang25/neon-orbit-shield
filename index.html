@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0a0a1a">
+  <meta name="description" content="Neon Orbit Shield — 一款赛博朋克风格的轨道护盾防御游戏。旋转能量护盾，保护中央核心不被霓虹弹幕摧毁！">
+  <meta property="og:title" content="Neon Orbit Shield — 霓虹轨道护盾">
+  <meta property="og:description" content="旋转能量护盾，抵御霓虹弹幕！挑战Boss，冲击最高分！">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="">
+  <meta property="og:image" content="screenshot.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <title>Neon Orbit Shield — 霓虹轨道护盾</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/animations.css">
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="ui-overlay">
+      <!-- HUD -->
+      <div id="hud">
+        <div id="score-display">0</div>
+        <div id="health-display">
+          <div class="health-dot"></div>
+          <div class="health-dot"></div>
+          <div class="health-dot"></div>
+          <div class="health-dot"></div>
+          <div class="health-dot"></div>
+        </div>
+      </div>
+      <div id="combo-display">COMBO x1</div>
+      <div id="wave-display">WAVE 1</div>
+
+      <!-- Boss -->
+      <div id="boss-announce">⚠ BOSS ⚠</div>
+      <div id="boss-health-container">
+        <div id="boss-health-fill"></div>
+      </div>
+
+      <!-- 能量槽 -->
+      <div id="energy-bar-container">
+        <div id="energy-bar-fill"></div>
+      </div>
+
+      <!-- 菜单画面 -->
+      <div id="menu-screen">
+        <h1 id="menu-title">NEON ORBIT SHIELD</h1>
+        <p id="menu-subtitle">霓 虹 轨 道 护 盾</p>
+        <div id="menu-modes">
+          <button class="mode-btn active" data-mode="classic">∞ CLASSIC</button>
+          <button class="mode-btn" data-mode="challenge">⚔ CHALLENGE</button>
+        </div>
+        <p id="menu-start-hint">🖱 点击屏幕 / ⌨ 按空格键 开始</p>
+        <p id="menu-highscore"></p>
+      </div>
+
+      <!-- 游戏结束画面 -->
+      <div id="gameover-screen">
+        <div id="gameover-rating"></div>
+        <h2 id="gameover-title">GAME OVER</h2>
+        <div id="gameover-stats">
+          <p><span class="label">最终得分</span> <span class="value" id="stat-score">0</span></p>
+          <p><span class="label">最高连击</span> <span class="value" id="stat-combo">0</span></p>
+          <p><span class="label">到达波次</span> <span class="value" id="stat-wave">1</span></p>
+          <p><span class="label">历史最高</span> <span class="value" id="stat-highscore">0</span></p>
+        </div>
+        <p id="gameover-restart">点击屏幕或按空格键重新开始</p>
+      </div>
+
+      <!-- 屏幕闪白 -->
+      <div id="screen-flash"></div>
+    </div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
