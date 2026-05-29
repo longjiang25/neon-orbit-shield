@@ -15,7 +15,7 @@ import {
 import { initBossSystem, spawnBoss, updateBoss, renderBoss, damageBoss } from './boss.js';
 import { initPowerupSystem, spawnPowerup, updatePowerups, renderPowerups, updatePowerupTimers } from './powerup.js';
 import { initDifficulty, updateDifficulty, getSpawnInterval, getProjectileSpeed, getRandomProjType, shouldSpawnBoss } from './difficulty.js';
-import { initAudio } from './audio.js';
+import { initAudio, ensureAudioContext } from './audio.js';
 import { playBlock, playPerfectBlock, playHit, playCombo, playUltimate, playGameOver } from './audio.js';
 import { initUI, updateHUD, updateComboDisplay, flashScreen, showGameOver, showBossAnnounce, updateBossHealth, hideBossHealth, showScreen, updateMenuHighscore, showAchievement } from './ui.js';
 import { loadHighScore, saveHighScore, loadAchievements, saveAchievement, incrementTotalGames } from './storage.js';
@@ -171,7 +171,11 @@ function init() {
   const menuScreen = document.getElementById('menu-screen');
   const gameoverScreen = document.getElementById('gameover-screen');
   const handleScreenClick = (screen) => (e) => {
-    e.stopPropagation();
+    // 注意：不调用 stopPropagation()，否则会阻止 audio.js 的 AudioContext 初始化
+    // （audio.js 监听 document 上的 pointerdown 来激活 Web Audio）
+    // 菜单有 pointer-events: auto 已经拦截了事件，canvas 不会收到重复事件
+    // 双保险：主动激活 AudioContext（iOS Safari 要求用户手势中创建）
+    ensureAudioContext();
     if (screen === 'menu') {
       state.isPointerDown = true;
       state.spacePressed = true;

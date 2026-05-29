@@ -69,6 +69,14 @@ export function initAudio() {
   document.addEventListener('keydown', handler);
 }
 
+/**
+ * 供外部主动调用，确保 AudioContext 已激活
+ * （用于处理 stopPropagation 等导致 document 事件无法触发的场景）
+ */
+export function ensureAudioContext() {
+  ensureContext();
+}
+
 // 弹开弹幕 — 短促清脆 "叮"
 export function playBlock() {
   playTone(880, 0.06, 'square', 0.10);
