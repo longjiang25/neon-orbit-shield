@@ -4,6 +4,7 @@
  */
 
 import { initRenderer, resizeCanvas, renderBackground, renderCore } from './renderer.js';
+import { renderJoystick } from './renderer.js';
 import { initInput, updateInput } from './input.js';
 import { initShield, updateShield, renderShield } from './shield.js';
 import { initProjectilePool, spawnProjectile, updateProjectiles, renderProjectiles } from './projectile.js';
@@ -23,7 +24,8 @@ import { isPerfectBlock } from './shield.js';
 import {
   MAX_DT, MAX_HEALTH, COMBO_TIMEOUT, MAX_COMBO_MULT,
   ENERGY_MAX, ENERGY_PER_BLOCK, ENERGY_PER_PERFECT,
-  PROJ_TYPES, COLORS, POWERUP_SPAWN_CHANCE
+  PROJ_TYPES, COLORS, POWERUP_SPAWN_CHANCE,
+  JOYSTICK_AREA_RATIO, JOYSTICK_RADIUS_RATIO, MOBILE_BREAKPOINT
 } from './config.js';
 
 // --- 游戏状态 ---
@@ -133,11 +135,14 @@ function init() {
   // 初始化渲染器
   initRenderer(canvas, ctx);
   resizeCanvas(canvas, ctx, state);
+  updateJoystickLayout(state);
 
   // 初始化子系统
   state.projectilePool = initProjectilePool();
   state.particlePool = initParticlePool();
   initShield(state);
+  state.shieldBaseRadius = state.radius;
+  state.shieldCurrentRadius = state.radius;
   initBossSystem(state);
   initPowerupSystem(state);
   initDifficulty(state);
@@ -200,9 +205,15 @@ function init() {
   }
 
   // 窗口事件
-  window.addEventListener('resize', () => resizeCanvas(canvas, ctx, state));
+  window.addEventListener('resize', () => {
+    resizeCanvas(canvas, ctx, state);
+    updateJoystickLayout(state);
+  });
   window.addEventListener('orientationchange', () => {
-    setTimeout(() => resizeCanvas(canvas, ctx, state), 100);
+    setTimeout(() => {
+      resizeCanvas(canvas, ctx, state);
+      updateJoystickLayout(state);
+    }, 100);
   });
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
@@ -395,6 +406,22 @@ function update(dt) {
 // 渲染
 // ========================================================================
 
+/**
+ * 计算虚拟摇杆在屏幕上的位置（移动端）
+ * 底部居中，占屏幕高度 JOYSTICK_AREA_RATIO 的区域
+ */
+function updateJoystickLayout(state) {
+  if (!state.useJoystick) return;
+  const h = state.screenHeight;
+  const w = state.screenWidth;
+  const areaHeight = h * JOYSTICK_AREA_RATIO;
+  state.joyCY = h - areaHeight / 2;
+  state.joyCX = w / 2;
+  state.joyRadius = Math.min(areaHeight * JOYSTICK_RADIUS_RATIO, w * 0.35);
+  // 同步护盾基准半径（窗口缩放后需要更新）
+  state.shieldBaseRadius = state.radius;
+}
+
 function render(ctx, time) {
   ctx.save();
   applyScreenShake(ctx, state);
@@ -410,6 +437,11 @@ function render(ctx, time) {
   // --- 倒计时大字（Canvas 渲染，不受屏幕震动影响） ---
   if (state.screen === 'countdown') {
     renderCountdown(ctx, state);
+  }
+
+  // --- 虚拟摇杆 UI（移动端） ---
+  if (state.useJoystick && (state.screen === 'playing' || state.screen === 'countdown')) {
+    renderJoystick(ctx, state);
   }
 
   // --- FPS 显示（调试用） ---

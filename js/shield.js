@@ -1,6 +1,6 @@
 /**
  * shield.js — 护盾逻辑 + 渲染
- * 处理护盾角度平滑跟随、轨道渲染、格挡判定
+ * 处理护盾角度平滑跟随、可变轨道半径、格挡判定
  */
 
 import {
@@ -9,13 +9,15 @@ import {
   SHIELD_LINE_WIDTH,
   SHIELD_GLOW,
   SHIELD_SMOOTHING,
+  SHIELD_RADIUS_MIN_RATIO,
+  SHIELD_RADIUS_MAX_RATIO,
+  SHIELD_RADIAL_SMOOTHING,
 } from './config.js';
-import { lerpAngle, angleDiff, normalizeAngle, rgbaFromHex } from './utils.js';
+import { lerpAngle, angleDiff, normalizeAngle, rgbaFromHex, lerp, clamp } from './utils.js';
 import { drawGlowArc, drawGlowCircle } from './renderer.js';
 
 /**
  * 初始化护盾状态
- * @param {Object} state  游戏全局状态
  */
 export function initShield(state) {
   state.shieldAngle = 0;
@@ -23,29 +25,46 @@ export function initShield(state) {
   state.shieldArc = SHIELD_ARC_DEFAULT;
   state.originalShieldArc = SHIELD_ARC_DEFAULT;
   state.shieldActive = true;
-  state.shieldRadius = 0; // 在 resize 时根据屏幕尺寸设置
+  state.shieldRadius = 0;           // 当前实际轨道半径
+  state.shieldBaseRadius = 0;       // 默认轨道半径
+  state.targetShieldRadius = null;  // null=默认, 0~1=径向偏移比例
+  state.shieldCurrentRadius = 0;    // 平滑后的当前半径
 }
 
 /**
- * 每帧更新护盾角度（平滑跟随目标角度 + 键盘偏移）
- * @param {Object} state  游戏全局状态
- * @param {number}  dt    帧间隔（秒）
+ * 每帧更新护盾角度 + 径向位置
  */
 export function updateShield(state, dt) {
-  // 目标角度 = 指针角度 + 键盘旋转偏移
+  // ---- 角度平滑跟随 ----
   const targetAngle = (state.targetShieldAngle || 0) + (state.rotationOffset || 0);
-
-  // 帧率无关平滑跟随：乘以 60 使得 60fps 时系数 = SHIELD_SMOOTHING
   state.shieldAngle = lerpAngle(state.shieldAngle, targetAngle, SHIELD_SMOOTHING * 60 * dt);
-
-  // 归一化到 [0, 2π)
   state.shieldAngle = normalizeAngle(state.shieldAngle);
+
+  // ---- 径向平滑跟随 ----
+  if (state.shieldBaseRadius <= 0) {
+    state.shieldBaseRadius = state.radius || state.shieldRadius;
+  }
+
+  const baseR = state.shieldBaseRadius || state.radius || 0;
+
+  // 计算目标半径
+  let targetRadius;
+  if (state.targetShieldRadius !== null && state.targetShieldRadius !== undefined) {
+    // 0 → 内缩到最小, 1 → 外扩到最大
+    const t = clamp(state.targetShieldRadius, 0, 1);
+    targetRadius = baseR * (SHIELD_RADIUS_MIN_RATIO + t * (SHIELD_RADIUS_MAX_RATIO - SHIELD_RADIUS_MIN_RATIO));
+  } else {
+    targetRadius = baseR;
+  }
+
+  // 平滑插值
+  if (state.shieldCurrentRadius <= 0) state.shieldCurrentRadius = targetRadius;
+  state.shieldCurrentRadius = lerp(state.shieldCurrentRadius, targetRadius, SHIELD_RADIAL_SMOOTHING * 60 * dt);
+  state.shieldRadius = state.shieldCurrentRadius;
 }
 
 /**
- * 渲染护盾（轨道虚线圆 + 发光弧线 + 端点光点）
- * @param {CanvasRenderingContext2D} ctx    Canvas 2D 上下文
- * @param {Object}                   state  游戏全局状态
+ * 渲染护盾
  */
 export function renderShield(ctx, state) {
   const cx = state.cx;
@@ -54,7 +73,7 @@ export function renderShield(ctx, state) {
 
   if (radius <= 0) return;
 
-  // ========== 轨道虚线圆 ==========
+  // ---- 轨道虚线圆 ----
   ctx.save();
   ctx.setLineDash([8, 16]);
   ctx.strokeStyle = rgbaFromHex(SHIELD_COLOR, 0.2);
@@ -64,16 +83,15 @@ export function renderShield(ctx, state) {
   ctx.stroke();
   ctx.restore();
 
-  // 护盾未激活时不画弧线
   if (!state.shieldActive) return;
 
-  // ========== 护盾发光弧线 ==========
+  // ---- 护盾发光弧线 ----
   const startAngle = state.shieldAngle - state.shieldArc / 2;
   const endAngle = state.shieldAngle + state.shieldArc / 2;
 
   drawGlowArc(ctx, cx, cy, radius, startAngle, endAngle, SHIELD_COLOR, SHIELD_LINE_WIDTH, SHIELD_GLOW);
 
-  // ========== 弧线两端光点 ==========
+  // ---- 弧线两端光点 ----
   const tipRadius = SHIELD_LINE_WIDTH * 2;
   const tipGlow = 15;
 
@@ -88,9 +106,6 @@ export function renderShield(ctx, state) {
 
 /**
  * 判断弹幕角度是否在护盾范围内
- * @param {number} angle  弹幕入射角度
- * @param {Object} state  游戏全局状态
- * @returns {boolean}
  */
 export function isWithinShield(angle, state) {
   const diff = Math.abs(angleDiff(angle, state.shieldAngle));
@@ -98,12 +113,9 @@ export function isWithinShield(angle, state) {
 }
 
 /**
- * 判断弹幕角度是否在完美格挡范围内（约 5°）
- * @param {number} angle  弹幕入射角度
- * @param {Object} state  游戏全局状态
- * @returns {boolean}
+ * 判断是否为完美格挡（约 5°）
  */
 export function isPerfectBlock(angle, state) {
   const diff = Math.abs(angleDiff(angle, state.shieldAngle));
-  return diff <= 0.087; // ~5°
+  return diff <= 0.087;
 }

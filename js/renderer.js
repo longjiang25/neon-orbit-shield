@@ -312,3 +312,84 @@ export function drawGlowLine(ctx, x1, y1, x2, y2, color, lineWidth, glowSize) {
 
   ctx.restore();
 }
+
+/**
+ * renderJoystick — 渲染移动端虚拟摇杆 UI
+ * 只在移动端 + 游戏进行中时调用
+ *
+ * - 半透明外圈（摇杆边界）
+ * - 十字参考线
+ * - 手指位置指示小球（按住时显示）
+ */
+export function renderJoystick(ctx, state) {
+  const { joyCX, joyCY, joyRadius } = state;
+  if (!joyRadius || joyRadius <= 0) return;
+
+  ctx.save();
+
+  // ---- 摇杆外圈 ----
+  ctx.strokeStyle = 'rgba(0, 212, 255, 0.35)';
+  ctx.lineWidth = 2;
+  ctx.shadowColor = 'rgba(0, 212, 255, 0.25)';
+  ctx.shadowBlur = 12;
+  ctx.beginPath();
+  ctx.arc(joyCX, joyCY, joyRadius, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // ---- 十字参考线 ----
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = 'rgba(0, 212, 255, 0.15)';
+  ctx.lineWidth = 0.5;
+  ctx.setLineDash([4, 8]);
+  ctx.beginPath();
+  ctx.moveTo(joyCX - joyRadius, joyCY);
+  ctx.lineTo(joyCX + joyRadius, joyCY);
+  ctx.moveTo(joyCX, joyCY - joyRadius);
+  ctx.lineTo(joyCX, joyCY + joyRadius);
+  ctx.stroke();
+
+  // ---- 中心点 ----
+  ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(0, 212, 255, 0.4)';
+  ctx.beginPath();
+  ctx.arc(joyCX, joyCY, 4, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ---- 手指位置指示（按住时） ----
+  if (state.joystickActive) {
+    const fingerX = joyCX + (state.joystickX || 0) * joyRadius;
+    const fingerY = joyCY + (state.joystickY || 0) * joyRadius;
+
+    // 连线
+    ctx.strokeStyle = 'rgba(0, 255, 204, 0.2)';
+    ctx.lineWidth = 1;
+    ctx.shadowBlur = 0;
+    ctx.beginPath();
+    ctx.moveTo(joyCX, joyCY);
+    ctx.lineTo(fingerX, fingerY);
+    ctx.stroke();
+
+    // 手指圆点（外层发光）
+    ctx.fillStyle = 'rgba(0, 255, 204, 0.7)';
+    ctx.shadowColor = 'rgba(0, 255, 204, 0.6)';
+    ctx.shadowBlur = 18;
+    ctx.beginPath();
+    ctx.arc(fingerX, fingerY, 10, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 内层高亮
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.shadowBlur = 0;
+    ctx.beginPath();
+    ctx.arc(fingerX, fingerY, 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // ---- 标签文字 ----
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+  ctx.font = `${Math.max(10, joyRadius * 0.12)}px "Segoe UI", Arial, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.fillText('按住拖动控制护盾', joyCX, joyCY - joyRadius - 12);
+
+  ctx.restore();
+}

@@ -1,124 +1,218 @@
 /**
- * input.js — 统一输入处理（触屏/鼠标/键盘）
- * 绑定 pointer events 到 canvas，绑定 key events 到 window
+ * input.js — 统一输入处理（触屏/鼠标/键盘 + 移动端虚拟摇杆）
+ *
+ * 桌面端：鼠标在 Canvas 上移动直接控制护盾角度
+ * 移动端：屏幕底部虚拟摇杆圈控制护盾角度 + 径向移动
+ * 键盘：方向键旋转（全平台通用）
  */
 
-import { normalizeAngle, angleDiff, lerpAngle } from './utils.js';
+import { normalizeAngle, angleDiff, lerpAngle, clamp } from './utils.js';
+import { MOBILE_BREAKPOINT, SHIELD_SMOOTHING } from './config.js';
+
+/**
+ * 检测是否为移动设备
+ */
+function isMobileDevice() {
+  return window.innerWidth < MOBILE_BREAKPOINT || 'ontouchstart' in window;
+}
 
 /**
  * 初始化输入系统
- * @param {Object} state  游戏全局状态
- * @param {HTMLCanvasElement} canvas  画布元素
  */
 export function initInput(state, canvas) {
-  // ---- 存储引用 ----
   state.inputCanvas = canvas;
 
-  // ---- 初始化指针状态 ----
+  // ---- 指针状态 ----
   state.rotationOffset = 0;
   state.isPointerDown = false;
   state.targetShieldAngle = 0;
+  state.targetShieldRadius = null; // null = 使用默认轨道
 
-  // ---- 初始化键盘状态 ----
+  // ---- 虚拟摇杆状态 ----
+  state.useJoystick = isMobileDevice();
+  state.joystickActive = false;
+  state.joystickX = 0;       // 手指在摇杆中的 X 偏移 (-1~1)
+  state.joystickY = 0;       // 手指在摇杆中的 Y 偏移 (-1~1)
+  state.joystickDist = 0;    // 手指距摇杆中心的归一化距离 (0~1)
+
+  // ---- 键盘状态 ----
   state.rotateLeft = false;
   state.rotateRight = false;
   state.spacePressed = false;
 
-  // ========== 指针事件 ==========
+  // ---- 摇杆位置（由 resize 计算） ----
+  state.joyCX = 0;
+  state.joyCY = 0;
+  state.joyRadius = 0;
+
+  if (state.useJoystick) {
+    initJoystickInput(state, canvas);
+  } else {
+    initDesktopInput(state, canvas);
+  }
+
+  // 键盘事件（全平台通用）
+  initKeyboardInput(state);
+}
+
+// ====================================================================
+// 桌面端输入（原有逻辑）
+// ====================================================================
+
+function initDesktopInput(state, canvas) {
   const getPointerAngle = (e) => {
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     const dx = x - state.cx;
     const dy = y - state.cy;
-
-    // 指针非常接近中心时保持上一个角度不变
-    if (dx * dx + dy * dy < 4) {
-      return null;
-    }
+    if (dx * dx + dy * dy < 4) return null;
     return Math.atan2(dy, dx);
   };
 
-  const onPointerDown = (e) => {
+  canvas.addEventListener('pointerdown', (e) => {
     const angle = getPointerAngle(e);
-    if (angle !== null) {
-      state.targetShieldAngle = angle;
-    }
+    if (angle !== null) state.targetShieldAngle = angle;
     state.isPointerDown = true;
-  };
+    state.targetShieldRadius = null; // 桌面端用默认轨道
+  });
 
-  const onPointerMove = (e) => {
+  canvas.addEventListener('pointermove', (e) => {
+    if (!state.isPointerDown) return;
     const angle = getPointerAngle(e);
-    if (angle !== null) {
-      state.targetShieldAngle = angle;
+    if (angle !== null) state.targetShieldAngle = angle;
+  });
+
+  canvas.addEventListener('pointerup', () => { state.isPointerDown = false; });
+  canvas.addEventListener('pointerleave', () => { state.isPointerDown = false; });
+}
+
+// ====================================================================
+// 移动端虚拟摇杆输入
+// ====================================================================
+
+function initJoystickInput(state, canvas) {
+  const getJoystickPos = (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // 只在摇杆区域内响应
+    const dx = x - state.joyCX;
+    const dy = y - state.joyCY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    // 允许一定溢出（手指滑出摇杆圈后仍然跟踪，但 clamp 到圈内）
+    return {
+      dx: dx,
+      dy: dy,
+      dist: dist,
+      inRange: dist <= state.joyRadius * 1.5, // 1.5倍半径内都响应
+    };
+  };
+
+  canvas.addEventListener('pointerdown', (e) => {
+    const pos = getJoystickPos(e);
+    if (pos && pos.inRange) {
+      state.joystickActive = true;
+      updateJoystickState(state, pos);
     }
-    state.isPointerDown = true;
-  };
+  });
 
-  const onPointerUp = () => {
-    state.isPointerDown = false;
-    // 不归零 targetShieldAngle，保持最后位置
-  };
-
-  const onPointerLeave = () => {
-    state.isPointerDown = false;
-  };
-
-  canvas.addEventListener('pointerdown', onPointerDown);
-  canvas.addEventListener('pointermove', onPointerMove);
-  canvas.addEventListener('pointerup', onPointerUp);
-  canvas.addEventListener('pointerleave', onPointerLeave);
-
-  // ========== 键盘事件 ==========
-  const ROTATION_SPEED = 5; // rad/s
-
-  const onKeyDown = (e) => {
-    switch (e.key) {
-      case 'ArrowLeft':
-      case 'a':
-      case 'A':
-        state.rotateLeft = true;
-        break;
-      case 'ArrowRight':
-      case 'd':
-      case 'D':
-        state.rotateRight = true;
-        break;
-      case ' ':
-        state.spacePressed = true;
-        break;
+  canvas.addEventListener('pointermove', (e) => {
+    if (!state.joystickActive) return;
+    const pos = getJoystickPos(e);
+    if (pos) {
+      updateJoystickState(state, pos);
     }
-  };
+  });
 
-  const onKeyUp = (e) => {
-    switch (e.key) {
-      case 'ArrowLeft':
-      case 'a':
-      case 'A':
-        state.rotateLeft = false;
-        break;
-      case 'ArrowRight':
-      case 'd':
-      case 'D':
-        state.rotateRight = false;
-        break;
-      case ' ':
-        state.spacePressed = false;
-        break;
-    }
-  };
+  canvas.addEventListener('pointerup', () => {
+    state.joystickActive = false;
+    state.joystickX = 0;
+    state.joystickY = 0;
+    state.joystickDist = 0;
+    state.targetShieldRadius = null;
+  });
 
-  window.addEventListener('keydown', onKeyDown);
-  window.addEventListener('keyup', onKeyUp);
+  canvas.addEventListener('pointerleave', () => {
+    state.joystickActive = false;
+    state.joystickX = 0;
+    state.joystickY = 0;
+    state.joystickDist = 0;
+    state.targetShieldRadius = null;
+  });
 }
 
 /**
- * 每帧更新输入状态（处理键盘旋转偏移）
- * @param {Object} state  游戏全局状态
- * @param {number}  dt    帧间隔（秒）
+ * 更新摇杆状态 → 护盾角度 + 径向偏移
+ *
+ * 映射规则：
+ * - 手指在摇杆中的角度 → 护盾角度（直接映射）
+ * - 手指距摇杆中心的距离 → 护盾外扩程度
+ *   dist=0（中心）→ 护盾在默认轨道
+ *   dist=joyRadius（边缘）→ 护盾外扩到最大值
  */
+function updateJoystickState(state, pos) {
+  const clampedDist = clamp(pos.dist, 0, state.joyRadius);
+  const normalizedDist = state.joyRadius > 0 ? clampedDist / state.joyRadius : 0;
+
+  state.joystickX = (pos.dx / state.joyRadius) || 0;
+  state.joystickY = (pos.dy / state.joyRadius) || 0;
+  state.joystickDist = normalizedDist;
+
+  // 角度：手指方向 → 护盾方向
+  if (pos.dist > 2) {
+    state.targetShieldAngle = Math.atan2(pos.dy, pos.dx);
+  }
+
+  // 径向：手指距中心距离 → 护盾轨道偏移
+  // normalizedDist=0 → null(默认), normalizedDist>0 → 外扩
+  if (normalizedDist < 0.05) {
+    state.targetShieldRadius = null;
+  } else {
+    state.targetShieldRadius = normalizedDist; // 0~1，shield.js 中映射到实际范围
+  }
+
+  state.isPointerDown = true;
+}
+
+// ====================================================================
+// 键盘输入
+// ====================================================================
+
+function initKeyboardInput(state) {
+  const ROTATION_SPEED = 5;
+
+  window.addEventListener('keydown', (e) => {
+    switch (e.key) {
+      case 'ArrowLeft': case 'a': case 'A':
+        state.rotateLeft = true; break;
+      case 'ArrowRight': case 'd': case 'D':
+        state.rotateRight = true; break;
+      case ' ':
+        state.spacePressed = true; break;
+    }
+  });
+
+  window.addEventListener('keyup', (e) => {
+    switch (e.key) {
+      case 'ArrowLeft': case 'a': case 'A':
+        state.rotateLeft = false; break;
+      case 'ArrowRight': case 'd': case 'D':
+        state.rotateRight = false; break;
+      case ' ':
+        state.spacePressed = false; break;
+    }
+  });
+}
+
+// ====================================================================
+// 每帧更新
+// ====================================================================
+
 export function updateInput(state, dt) {
-  const ROTATION_SPEED = 5; // rad/s，与 initInput 中一致
+  const ROTATION_SPEED = 5;
 
   const left = state.rotateLeft;
   const right = state.rotateRight;
@@ -128,16 +222,10 @@ export function updateInput(state, dt) {
   } else if (right && !left) {
     state.rotationOffset += ROTATION_SPEED * dt;
   } else {
-    // 两者都不按或同时按下 → 衰减
     state.rotationOffset *= 0.9;
   }
 }
 
-/**
- * 获取当前指针目标角度
- * @param {Object} state  游戏全局状态
- * @returns {number} 目标角度（弧度）
- */
 export function getTargetAngle(state) {
   return state.targetShieldAngle || 0;
 }

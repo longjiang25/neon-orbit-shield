@@ -9,6 +9,14 @@ export const SHIELD_ORBIT_RATIO = 0.38;        // 护盾轨道半径占屏幕比
 export const STAR_COUNT = 150;
 export const NEBULA_COUNT = 3;
 
+// ========== 虚拟摇杆（移动端） ==========
+export const MOBILE_BREAKPOINT = 768;           // 移动端判定宽度 (px)
+export const JOYSTICK_AREA_RATIO = 0.22;        // 摇杆区域占屏幕高度比例
+export const JOYSTICK_RADIUS_RATIO = 0.65;      // 摇杆圆半径占控制区高度比例
+export const SHIELD_RADIUS_MIN_RATIO = 0.65;    // 护盾最小轨道倍率（内缩）
+export const SHIELD_RADIUS_MAX_RATIO = 1.25;    // 护盾最大轨道倍率（外扩）
+export const SHIELD_RADIAL_SMOOTHING = 0.08;    // 护盾径向平滑系数
+
 // ========== 护盾 ==========
 export const SHIELD_ARC_DEFAULT = Math.PI / 3.6;  // 默认 50°
 export const SHIELD_SMOOTHING = 0.12;             // 平滑跟随系数
