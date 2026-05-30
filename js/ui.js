@@ -161,17 +161,22 @@ export function showScreen(screenName) {
   const menu = document.getElementById('menu-screen');
   const gameover = document.getElementById('gameover-screen');
   const bossAnnounce = document.getElementById('boss-announce');
+  const joystickZone = document.getElementById('joystick-zone');
 
   if (screenName === 'menu') {
     if (menu) { menu.classList.remove('hidden'); menu.style.opacity = '1'; menu.style.pointerEvents = 'auto'; }
     if (gameover) { gameover.classList.remove('visible'); }
+    if (joystickZone) joystickZone.classList.remove('mobile-visible');
   } else if (screenName === 'countdown' || screenName === 'playing') {
     if (menu) { menu.classList.add('hidden'); menu.style.opacity = '0'; menu.style.pointerEvents = 'none'; }
     if (gameover) { gameover.classList.remove('visible'); }
     if (bossAnnounce) bossAnnounce.classList.remove('visible');
+    // 摇杆在游戏中显示（由 input.js 的 useJoystick 控制 CSS，此处不做改动）
+    // showJoystickDOM 会通过 main.js 单独调用
   } else if (screenName === 'gameover') {
     if (gameover) gameover.classList.add('visible');
     if (menu) { menu.style.pointerEvents = 'none'; }
+    if (joystickZone) joystickZone.classList.remove('mobile-visible');
   }
 }
 

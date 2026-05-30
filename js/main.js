@@ -4,7 +4,6 @@
  */
 
 import { initRenderer, resizeCanvas, renderBackground, renderCore } from './renderer.js';
-import { renderJoystick } from './renderer.js';
 import { initInput, updateInput } from './input.js';
 import { initShield, updateShield, renderShield } from './shield.js';
 import { initProjectilePool, spawnProjectile, updateProjectiles, renderProjectiles } from './projectile.js';
@@ -145,8 +144,8 @@ function init() {
   initBossSystem(state);
   initPowerupSystem(state);
   initDifficulty(state);
-  initInput(state, canvas);     // 先初始化输入（设置 useJoystick）
-  updateJoystickLayout(state); // 再计算摇杆位置（依赖 useJoystick）
+  initInput(state, canvas);     // 设置 useJoystick + 初始化 DOM 摇杆
+  showJoystickDOM(state);       // 根据屏幕状态显示/隐藏摇杆
   initAudio();
   initUI(state);
 
@@ -207,12 +206,14 @@ function init() {
   // 窗口事件
   window.addEventListener('resize', () => {
     resizeCanvas(canvas, ctx, state);
-    updateJoystickLayout(state);
+    state.shieldBaseRadius = state.radius;
+    showJoystickDOM(state);
   });
   window.addEventListener('orientationchange', () => {
     setTimeout(() => {
       resizeCanvas(canvas, ctx, state);
-      updateJoystickLayout(state);
+      state.shieldBaseRadius = state.radius;
+      showJoystickDOM(state);
     }, 100);
   });
   document.addEventListener('visibilitychange', () => {
@@ -269,6 +270,7 @@ function gameLoop(timestamp) {
     if (state._countdownTimer <= 0) {
       state.screen = 'playing';
       state._spawnAccum = 0;
+      showJoystickDOM(state);
     }
   }
 
@@ -407,19 +409,16 @@ function update(dt) {
 // ========================================================================
 
 /**
- * 计算虚拟摇杆在屏幕上的位置（移动端）
- * 底部居中，占屏幕高度 JOYSTICK_AREA_RATIO 的区域
+ * 根据游戏状态显示/隐藏 DOM 摇杆
  */
-function updateJoystickLayout(state) {
-  if (!state.useJoystick) return;
-  const h = state.screenHeight;
-  const w = state.screenWidth;
-  const areaHeight = h * JOYSTICK_AREA_RATIO;
-  state.joyCY = h - areaHeight / 2;
-  state.joyCX = w / 2;
-  state.joyRadius = Math.min(areaHeight * JOYSTICK_RADIUS_RATIO, w * 0.35);
-  // 同步护盾基准半径（窗口缩放后需要更新）
-  state.shieldBaseRadius = state.radius;
+function showJoystickDOM(state) {
+  const zone = document.getElementById('joystick-zone');
+  if (!zone) return;
+  if (state.useJoystick && (state.screen === 'playing' || state.screen === 'countdown')) {
+    zone.classList.add('mobile-visible');
+  } else {
+    zone.classList.remove('mobile-visible');
+  }
 }
 
 function render(ctx, time) {
@@ -437,11 +436,6 @@ function render(ctx, time) {
   // --- 倒计时大字（Canvas 渲染，不受屏幕震动影响） ---
   if (state.screen === 'countdown') {
     renderCountdown(ctx, state);
-  }
-
-  // --- 虚拟摇杆 UI（移动端） ---
-  if (state.useJoystick && (state.screen === 'playing' || state.screen === 'countdown')) {
-    renderJoystick(ctx, state);
   }
 
   // --- FPS 显示（调试用） ---

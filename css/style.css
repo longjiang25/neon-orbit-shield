@@ -357,3 +357,58 @@ html, body {
 .hidden {
   display: none !important;
 }
+
+/* ==========================================
+   移动端虚拟摇杆（DOM）
+   ========================================== */
+#joystick-zone {
+  display: none;           /* 桌面端隐藏，移动端由 JS 显示 */
+  position: absolute;
+  bottom: calc(12px + var(--safe-area-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: auto;
+  text-align: center;
+  z-index: 50;
+}
+
+#joystick-zone.mobile-visible {
+  display: block;
+}
+
+#joystick-ring {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  margin: 0 auto;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 212, 255, 0.4);
+  background: rgba(0, 212, 255, 0.06);
+  box-shadow: 0 0 16px rgba(0, 212, 255, 0.15), inset 0 0 16px rgba(0, 212, 255, 0.05);
+}
+
+#joystick-thumb {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(0, 255, 204, 0.7);
+  box-shadow: 0 0 14px rgba(0, 255, 204, 0.5);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  transition: none;  /* JS 控制位置，无过渡 */
+}
+
+#joystick-thumb.active {
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 22px rgba(0, 255, 204, 0.8);
+}
+
+#joystick-hint {
+  margin-top: 8px;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.3);
+  letter-spacing: 2px;
+}
