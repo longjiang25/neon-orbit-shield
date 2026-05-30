@@ -135,7 +135,6 @@ function init() {
   // 初始化渲染器
   initRenderer(canvas, ctx);
   resizeCanvas(canvas, ctx, state);
-  updateJoystickLayout(state);
 
   // 初始化子系统
   state.projectilePool = initProjectilePool();
@@ -146,7 +145,8 @@ function init() {
   initBossSystem(state);
   initPowerupSystem(state);
   initDifficulty(state);
-  initInput(state, canvas);
+  initInput(state, canvas);     // 先初始化输入（设置 useJoystick）
+  updateJoystickLayout(state); // 再计算摇杆位置（依赖 useJoystick）
   initAudio();
   initUI(state);
 
